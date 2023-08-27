@@ -1,0 +1,302 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include "priority_queue.h"
+#define MIN 10000
+
+// Node to store adjacency list
+typedef struct AdjNode{
+    int vertex;
+    int weight;  // Weight of the edge
+    struct AdjNode* next;
+}AdjNode;
+
+// Adjacency List representation
+typedef struct AdjList{
+    int value;         // Vertex value
+    AdjNode* head;
+}AdjList;
+
+// Graph representation
+typedef struct Graph{
+    int V;     // Number of vertices
+    AdjList* array; // Array of adjacency lists
+    int* visited;
+}Graph;
+
+// Structure to represent a node in the priority queue
+typedef struct PQNode {
+    int vertex;
+    int key;
+} PQNode;
+
+Graph* createGraph(int vertices);
+void addEdge(Graph* graph, int source, int destination, int weight, bool isDirected);
+void removeEdge(Graph* G, int src, int dest, bool isDirected);
+void addVertex(Graph* graph);
+void removeVertex(Graph* graph, int vertexToRemove);
+void printGraph(Graph* graph);
+int getEdgeWeight(Graph* graph, int src, int dest);
+void primMST(Graph* graph);
+
+
+
+int main() {
+
+	int numNodes = 10;
+	Graph *graph = createGraph(numNodes);
+	
+	// Adding edges to the graph
+    addEdge(graph, 0, 1, 4, false);
+    addEdge(graph, 1, 2, 5, false);
+    addEdge(graph, 2, 3, 5, false);
+    addEdge(graph, 3, 4, 5, false);
+    addEdge(graph, 4, 5, 6, false);
+    addEdge(graph, 5, 6, 7, false);
+    addEdge(graph, 6, 0, 8, false);
+    addEdge(graph, 3, 5, 6, false);
+	addEdge(graph, 7, 8, 3, false);
+	addEdge(graph, 6, 7, 2, false);
+	addEdge(graph, 8, 9, 1, false);
+	addEdge(graph, 2, 4, 6, false);
+	addEdge(graph, 2, 6, 3, false);
+	
+	printGraph(graph);
+	
+	primMST(graph);
+	
+	
+	return 0;
+}
+
+Graph* createGraph(int vertices){
+    Graph* graph = (Graph*)malloc(sizeof(Graph));
+    graph->V = vertices;
+    graph->array = (AdjList*)malloc(vertices * sizeof(AdjList));
+    graph->visited = (int*)malloc(vertices * sizeof(int));
+    for(int i = 0; i < vertices; ++i){
+        graph->array[i].value = i; // Set the vertex value
+        graph->array[i].head = NULL;
+        graph->visited[i] = 0;
+    }
+    return graph;
+}
+
+void addEdge(Graph* graph, int source, int destination, int weight, bool isDirected){
+    // Create the new node
+    AdjNode* newNode = (AdjNode*)malloc(sizeof(AdjNode));
+    newNode->vertex = destination;
+    newNode->weight = weight;
+    newNode->next = NULL;
+
+    // Add edge from source to destination
+    if(graph->array[source].head == NULL){
+        graph->array[source].head = newNode;
+    }else{
+        AdjNode* current = graph->array[source].head;
+        while(current->next != NULL){
+            current = current->next;
+        }
+        current->next = newNode;
+    }
+
+    if(!isDirected){
+        // Create the new node for the reverse edge
+        newNode = (AdjNode*)malloc(sizeof(AdjNode));
+        newNode->vertex = source;
+        newNode->weight = weight;
+        newNode->next = NULL;
+
+        // Add edge from destination to source (undirected)
+        if(graph->array[destination].head == NULL){
+            graph->array[destination].head = newNode;
+        }else{
+            AdjNode* current = graph->array[destination].head;
+            while(current->next != NULL){
+                current = current->next;
+            }
+            current->next = newNode;
+        }
+    }
+}
+
+void removeEdge(Graph* G, int src, int dest, bool isDirected){
+	
+    if(src < 0 || src >= G->V || dest < 0 || dest >= G->V){
+        printf("Invalid vertex indices.\n");
+        return;
+    }
+
+    // Remove the edge from source to destination
+    AdjNode* current = G->array[src].head;
+    AdjNode* prev = NULL;
+    while(current != NULL){
+        if(current->vertex == dest){
+            if(prev == NULL){
+                G->array[src].head = current->next;
+            } else {
+                prev->next = current->next;
+            }
+            free(current);
+            break;
+        }
+        prev = current;
+        current = current->next;
+    }
+
+    // If it's an undirected graph, also remove the reverse edge
+    if(!isDirected){
+        current = G->array[dest].head;
+        prev = NULL;
+        while(current != NULL){
+            if(current->vertex == src){
+                if(prev == NULL){
+                    G->array[dest].head = current->next;
+                }else{
+                    prev->next = current->next;
+                }
+                free(current);
+                break;
+            }
+            prev = current;
+            current = current->next;
+        }
+    }
+}
+
+void addVertex(Graph* graph){
+	
+    int newVertex = graph->V;
+    graph->V += 1;
+    
+    // Allocate memory for the new adjacency list array
+    graph->array = (AdjList*)realloc(graph->array, graph->V * sizeof(AdjList));
+    
+    // Initialize the new vertex's adjacency list
+    graph->array[newVertex].value = newVertex; // Set the vertex value
+    graph->array[newVertex].head = NULL;
+}
+
+void removeVertex(Graph* graph, int vertexToRemove){
+	
+    if(vertexToRemove >= graph->V){
+        return; // Invalid vertex index
+    }
+
+    // Remove all the edges connected to the vertex
+    AdjNode* current = graph->array[vertexToRemove].head;
+    while(current != NULL){
+        AdjNode* temp = current;
+        current = current->next;
+        free(temp);
+    }
+    graph->array[vertexToRemove].head = NULL;
+
+    // Shift the remaining vertices to fill the gap
+    for(int v = vertexToRemove; v < graph->V - 1; v++){
+        graph->array[v] = graph->array[v + 1];
+        // Update destination of edges pointing to vertices greater than the removed vertex
+        current = graph->array[v].head;
+        while(current != NULL){
+            if(current->vertex > vertexToRemove){
+                current->vertex;
+            }
+            current = current->next;
+        }
+    }
+
+    // Clear the last vertex's entry
+    graph->array[graph->V - 1].head = NULL;
+
+    // Update the number of vertices
+    graph->V--;
+}
+
+void printGraph(Graph* graph){
+	
+    for(int i = 0; i < graph->V; ++i){
+        printf("head %d: ", graph->array[i].value);
+        AdjNode* temp = graph->array[i].head;
+        while(temp != NULL){
+            printf("-> %d ", temp->vertex);
+            temp = temp->next;
+        }
+        printf("-> NULL\n");
+    }
+}
+
+int getEdgeWeight(Graph* graph, int src, int dest) {
+	
+    AdjNode* current = graph->array[src].head;
+    while (current != NULL) {
+        if (current->vertex == dest) {
+            return current->weight;
+        }
+        current = current->next;
+    }
+    return -1; // Return a sentinel value if the edge is not found
+}
+
+void primMST(Graph* graph) {
+	
+    int parent[graph->V];
+    int key[graph->V];
+    bool inMST[graph->V];
+    PriorityQueue pq;
+
+    init(&pq);
+
+    for (int i = 0; i < graph->V; ++i) {
+        key[i] = MIN;
+        inMST[i] = false;
+    }
+
+    int startVertex = 0;
+    key[startVertex] = 0;
+    parent[startVertex] = -1;
+    enqueue(&pq, startVertex, 0);
+
+    while (!isEmpty(&pq)) {
+        int u = peek(&pq);
+        dequeue(&pq);
+        inMST[u] = true;
+
+        AdjNode* temp = graph->array[u].head;
+        while (temp != NULL) {
+            int v = temp->vertex;
+            int weight = temp->weight;
+
+            if (!inMST[v] && weight < key[v]) {
+                parent[v] = u;
+                key[v] = weight;
+                enqueue(&pq, v, weight);
+            }
+            temp = temp->next;
+        }
+    }
+
+    int totalWeight = 0; // Initialize the total weight
+
+    printf("Edge \tWeight\n");
+    for (int i = 0; i < graph->V; ++i) {
+        int parentVertex = parent[i];
+        if (parentVertex != -1) {
+            int weight = getEdgeWeight(graph, parentVertex, i);
+            if (weight != -1) {
+                totalWeight += weight; // Add the edge weight to the total
+                printf("%d - %d\t (%d)\n", parentVertex, i, weight);
+            }
+        }
+    }
+    
+    int parentVertex = parent[startVertex];
+	if (parentVertex != -1) {
+	    int weight = getEdgeWeight(graph, parentVertex, startVertex);
+	    if(weight != -1){
+	        totalWeight += weight; // Add the edge weight to the total
+		}
+	}
+
+    printf("Total minimum weight: %d\n", totalWeight);
+}
+
