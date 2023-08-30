@@ -23,6 +23,11 @@ typedef struct Graph{
     int* visited;
 }Graph;
 
+typedef enum Color {
+    RED, GREEN, BLUE, YELLOW, ORANGE, PINK, BLACK, BROWN, WHITE, PURPLE,
+    VIOLET, CYAN, MAGENTA, GRAY, GOLD, SILVER, // Add more colors here
+    NUM_COLORS
+} Color;
 
 Graph* createGraph(int vertices);
 void addEdge(Graph* graph, int source, int destination, int weight, bool isDirected);
@@ -30,57 +35,10 @@ void removeEdge(Graph* G, int src, int dest, bool isDirected);
 void addVertex(Graph* graph);
 void removeVertex(Graph* graph, int vertexToRemove);
 void printGraph(Graph* graph);
+void setConsoleColor(Color c);
+bool isSafe(Graph* graph, int vertex, Color c, int result[]);
+void colorGraph(Graph* graph);
 
-
-typedef enum Color {
-    RED, GREEN, BLUE, YELLOW, ORANGE, PINK, BLACK, BROWN, WHITE, PURPLE,
-    VIOLET, CYAN, MAGENTA, GRAY, GOLD, SILVER, // Add more colors here
-    NUM_COLORS
-} Color;
-
-// Function to set text color
-void setConsoleColor(Color c) {
-    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-    SetConsoleTextAttribute(hConsole, c + 1); // Colors start from 1 in SetConsoleTextAttribute
-}
-
-bool isSafe(Graph* graph, int vertex, Color c, int result[]) {
-    AdjNode* i = graph->array[vertex].head;
-    while (i != NULL) {
-        if (result[i->vertex] == c)
-            return false;
-        i = i->next;
-    }
-    return true;
-}
-
-void colorGraph(Graph* graph) {
-    int result[graph->V];
-
-    // Initialize all vertices with no color assigned (-1)
-    for (int u = 0; u < graph->V; u++)
-        result[u] = -1;
-
-    for (int u = 0; u < graph->V; u++) {
-        for (Color c = RED; c < NUM_COLORS; c++) {
-            if (isSafe(graph, u, c, result)) {
-                result[u] = c;
-                break;
-            }
-        }
-    }
-
-    // Array of color names for printing
-    const char* colorNames[NUM_COLORS] = {
-        "RED", "GREEN", "BLUE", "YELLOW", "ORANGE", "PINK", "BLACK", "BROWN", "WHITE", "PURPLE",
-        "VIOLET", "CYAN", "MAGENTA", "GRAY", "GOLD", "SILVER"
-    };
-
-    // Print the coloring result
-    for (int u = 0; u < graph->V; u++) {
-        printf("Vertex %d ---> Color (%d) - %s\n", u,result[u],colorNames[result[u]]);
-    }
-}
 
 
 int main() {
@@ -268,6 +226,49 @@ void printGraph(Graph* graph){
             temp = temp->next;
         }
         printf("-> NULL\n");
+    }
+}
+
+void setConsoleColor(Color c) {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(hConsole, c + 1); // Colors start from 1 in SetConsoleTextAttribute
+}
+
+bool isSafe(Graph* graph, int vertex, Color c, int result[]) {
+    AdjNode* i = graph->array[vertex].head;
+    while (i != NULL) {
+        if (result[i->vertex] == c)
+            return false;
+        i = i->next;
+    }
+    return true;
+}
+
+void colorGraph(Graph* graph) {
+    int result[graph->V];
+
+    // Initialize all vertices with no color assigned (-1)
+    for (int u = 0; u < graph->V; u++)
+        result[u] = -1;
+
+    for (int u = 0; u < graph->V; u++) {
+        for (Color c = RED; c < NUM_COLORS; c++) {
+            if (isSafe(graph, u, c, result)) {
+                result[u] = c;
+                break;
+            }
+        }
+    }
+
+    // Array of color names for printing
+    const char* colorNames[NUM_COLORS] = {
+        "RED", "GREEN", "BLUE", "YELLOW", "ORANGE", "PINK", "BLACK", "BROWN", "WHITE", "PURPLE",
+        "VIOLET", "CYAN", "MAGENTA", "GRAY", "GOLD", "SILVER"
+    };
+
+    // Print the coloring result
+    for (int u = 0; u < graph->V; u++) {
+        printf("Vertex %d ---> Color (%d) - %s\n", u,result[u],colorNames[result[u]]);
     }
 }
 
